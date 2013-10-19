@@ -33,7 +33,6 @@ import com.android.systemui.statusbar.policy.NotificationRowLayout;
 import com.android.systemui.statusbar.policy.activedisplay.ActiveDisplayView;
 import com.android.systemui.chaos.lab.gestureanywhere.GestureAnywhereView;
 import com.android.systemui.statusbar.tablet.StatusBarPanel;
-import com.android.systemui.statusbar.WidgetView;
 
 import android.annotation.ChaosLab;
 import android.annotation.ChaosLab.Classification;
@@ -95,6 +94,7 @@ import android.widget.PopupMenu;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
+import com.android.systemui.statusbar.WidgetView;
 import com.android.systemui.statusbar.halo.Halo;
 import com.android.systemui.statusbar.AppSidebar;
 import com.android.systemui.statusbar.phone.QuickSettingsContainerView;
@@ -121,8 +121,6 @@ public abstract class BaseStatusBar extends SystemUI implements
     protected static final int MSG_HIDE_INTRUDER = 1027;
 
     protected int mCurrentUIMode;
-
-    private WidgetView mWidgetView;
 
     protected static final boolean ENABLE_INTRUDERS = false;
 
@@ -174,6 +172,8 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     // left-hand icons
     public LinearLayout mStatusIcons;
+
+    private static WidgetView mWidgetView;
 
     // Statusbar view container
     public ViewGroup mBarView;
@@ -456,6 +456,8 @@ public abstract class BaseStatusBar extends SystemUI implements
         mLayoutDirection = TextUtils.getLayoutDirectionFromLocale(mLocale);
 
         mStatusBarContainer = new FrameLayout(mContext);
+        // create WidgetView
+        mWidgetView = new WidgetView(mContext,null);
 
         // Connect in to the status bar manager service
         StatusBarIconList iconList = new StatusBarIconList();
@@ -481,8 +483,6 @@ public abstract class BaseStatusBar extends SystemUI implements
             Settings.System.HALO_ACTIVE, 0) == 1;
 
         createAndAddWindows();
-        // create WidgetView
-        mWidgetView = new WidgetView(mContext,null);
         disable(switches[0]);
         setSystemUiVisibility(switches[1], 0xffffffff);
         topAppWindowChanged(switches[2] != 0);

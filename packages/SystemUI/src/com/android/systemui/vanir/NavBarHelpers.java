@@ -31,7 +31,6 @@ import com.android.systemui.R;
 import java.net.URISyntaxException;
 
 public class NavBarHelpers {
-    private static boolean wtf;
 
     private NavBarHelpers() {
     }

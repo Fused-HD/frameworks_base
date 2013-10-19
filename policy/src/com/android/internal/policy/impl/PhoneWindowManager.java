@@ -661,14 +661,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.ENABLE_FAST_TORCH), false, this,
                     UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_SHOW), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_HEIGHT), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_HEIGHT_LANDSCAPE), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_WIDTH), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(		
+                    Settings.System.NAVIGATION_BAR_HEIGHT), false, this);		
+	        resolver.registerContentObserver(Settings.System.getUriFor(		
+                    Settings.System.NAVIGATION_BAR_HEIGHT_LANDSCAPE), false, this);		
+	        resolver.registerContentObserver(Settings.System.getUriFor(		
+	                Settings.System.NAVIGATION_BAR_WIDTH), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.USER_UI_MODE), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
@@ -697,47 +695,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     }
 
-    private class HardwareObserver extends ContentObserver {
-        HardwareObserver(Handler handler) {
-            super(handler);
-        }
-        
-        protected void observeHardware() {
-            ContentResolver resolver = mContext.getContentResolver();
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_HOME_LONG_PRESS_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_HOME_DOUBLE_TAP_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_MENU_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_MENU_LONG_PRESS_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_ASSIST_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_ASSIST_LONG_PRESS_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_APP_SWITCH_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.KEY_APP_SWITCH_LONG_PRESS_ACTION), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.HARDWARE_KEY_REBINDING), false, this,
-                    UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.HOME_WAKE_SCREEN), false, this,
-                    UserHandle.USER_ALL);
-        }
+    private final BroadcastReceiver mHardwareReceiver = new BroadcastReceiver() {
 
-        @Override
-        public void onChange(boolean selfChange) {
+	    @Override
+	    public void onReceive(Context context, Intent intent) {
             // A settings update potentially means triggering a configuration change,
             // which we don't want to do during a window animation
             if (mAnimatingWindows) {
@@ -747,7 +708,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 updateRotation(false);
             }
         }
-    }
+    };
 
     class MyOrientationListener extends WindowOrientationListener {
         MyOrientationListener(Context context, Handler handler) {
@@ -1255,11 +1216,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
 
         if (mDeviceHardwareKeys != 0) {
-            new HardwareObserver(new Handler()).observeHardware();
 
-       //  to do: insert a way to poke settings to update the header entries here
-       //         Settings.System.putInt(mContext.getContentResolver(),
-       //                 Settings.System.KEYS_ENABLED, 1);
+            // register settings update receiver for hardware controls
+            IntentFilter keyupdate = new IntentFilter();
+            keyupdate.addAction("com.android.hardware.ACTION_UPDATE");
+            keyupdate.addAction("com.android.tablet.ACTION_UPDATE");
+            context.registerReceiver(mHardwareReceiver, keyupdate);
 
             updateKeyAssignments();
         }
@@ -1615,7 +1577,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         ContentResolver resolver = mContext.getContentResolver();
         boolean updateRotation = false, updateDisplayMetrics = false;
 
-        mEnableQuickTorch = Settings.System.getInt(resolver, Settings.System.ENABLE_FAST_TORCH, 0) == 1;
+        mEnableQuickTorch = (Settings.System.getInt(resolver,
+                Settings.System.ENABLE_FAST_TORCH, 0) == 1);
         mVolumeWakeScreen = (Settings.System.getInt(resolver,
                 Settings.System.VOLUME_WAKE_SCREEN, 0) == 1);
         mVolBtnMusicControls = (Settings.System.getInt(resolver,

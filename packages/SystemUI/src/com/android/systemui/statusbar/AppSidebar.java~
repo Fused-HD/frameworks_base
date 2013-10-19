@@ -343,6 +343,10 @@ public class AppSidebar extends TriggerOverlayView {
         }
     };
 
+<<<<<<< HEAD
+    @Override
+    protected void expandFromTriggerRegion() {
+=======
     private final BroadcastReceiver mBarReceiver = new BroadcastReceiver() {
 
 	    @Override
@@ -368,6 +372,7 @@ public class AppSidebar extends TriggerOverlayView {
     }
 
     private void expandFromTriggerRegion() {
+>>>>>>> 5670f35... simplify and rework navbar
         WindowManager.LayoutParams params = (WindowManager.LayoutParams) getLayoutParams();
         params.y = 0;
         Rect r = new Rect();

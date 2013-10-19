@@ -465,7 +465,6 @@ public class TabletStatusBar extends BaseStatusBar implements
         }
 
         setAreThereNotifications();
-        unobserve();
         mRecreating = false;
     }
 
@@ -735,6 +734,7 @@ public class TabletStatusBar extends BaseStatusBar implements
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
+        filter.addAction("com.android.tablet.ACTION_UPDATE");
         context.registerReceiver(mBroadcastReceiver, filter);
 
         if (mRecreating) {
@@ -743,7 +743,6 @@ public class TabletStatusBar extends BaseStatusBar implements
         addActiveDisplayView();
         addSidebarView();
 
-        observer().observe();
         updateSettings();
         mNavBarView.setTransparencyManager(mTransparencyManager);
         mTransparencyManager.setStatusbar(mStatusBarView);
@@ -1768,6 +1767,8 @@ public class TabletStatusBar extends BaseStatusBar implements
                     }
                 }
                 animateCollapsePanels(flags);
+            } else if ("com.android.tablet.ACTION_UPDATE".equals(action)) {
+                updateSettings();
             }
         }
     };
@@ -1809,49 +1810,6 @@ public class TabletStatusBar extends BaseStatusBar implements
     private boolean isLandscape () {
         Configuration config = mContext.getResources().getConfiguration();
         return (config.orientation == Configuration.ORIENTATION_LANDSCAPE);
-    }
-
-    private SettingsObserver _observer;
-    SettingsObserver observer() {
-        if (_observer == null)
-            _observer = new SettingsObserver(new Handler());
-        return _observer;
-    }
-    private void unobserve() {
-       if (_observer != null)
-            _observer._unobserve();
-    }
-    class SettingsObserver extends ContentObserver {
-        SettingsObserver(Handler handler) {
-            super(handler);
-        }
-
-        void observe() {
-            ContentResolver resolver = mContext.getContentResolver();
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_HEIGHT), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_HEIGHT_LANDSCAPE), false, this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.NAVIGATION_BAR_BUTTONS_QTY), false,
-                    this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.NAVIGATION_BAR_WIDTH_LAND), false,
-                    this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.NAVIGATION_BAR_WIDTH_PORT), false,
-                    this);
-        }
-
-        private void _unobserve() {
-            mContext.getContentResolver().unregisterContentObserver(_observer);
-            _observer = null;
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            updateSettings();
-        }
     }
 
    protected void updateSettings() {

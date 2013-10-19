@@ -18,16 +18,17 @@ package com.android.systemui.statusbar.policy;
 
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.TypedArray;
-import android.database.ContentObserver;
 import android.graphics.drawable.Drawable;
 import android.graphics.Canvas;
 import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.hardware.input.InputManager;
-import android.os.Handler;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.ServiceManager;
@@ -46,8 +47,6 @@ import android.view.ViewConfiguration;
 import android.widget.ImageView;
 
 import com.android.systemui.R;
-
-import java.util.ArrayList;
 
 public class KeyButtonView extends ImageView {
     private static final String TAG = "StatusBar.KeyButtonView";
@@ -73,9 +72,9 @@ public class KeyButtonView extends ImageView {
     private Context mmContext;
 
     private boolean mAttached = false;
-    private GlobalSettingsObserver mSettingsObserver;
+    private boolean attached = false;
 
-    Runnable mCheckLongPress = new Runnable() {
+    private Runnable mCheckLongPress = new Runnable() {
         public void run() {
             if (isPressed()) {
                 setHandlingLongpress(true);
@@ -110,51 +109,44 @@ public class KeyButtonView extends ImageView {
 
         mmContext = context;
 
-        TypedArray a = null;
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.KeyButtonView,
+                defStyle, 0);
 
         mShouldTintIcon = colorable;
 
-        try {
-            a = context.obtainStyledAttributes(attrs, R.styleable.KeyButtonView,
-                defStyle, 0);
+        mCode = a.getInteger(R.styleable.KeyButtonView_keyCode, 0);
 
-            mCode = a.getInteger(R.styleable.KeyButtonView_keyCode, 0);
-
-            mSupportsLongpress = a.getBoolean(R.styleable.KeyButtonView_keyRepeat, true);
-
-            mGlowBG = a.getDrawable(R.styleable.KeyButtonView_glowBackground);
-            if (mGlowBG != null) {
-                setDrawingAlpha(BUTTON_QUIESCENT_ALPHA);
-                mGlowWidth = mGlowBG.getIntrinsicWidth();
-                mGlowHeight = mGlowBG.getIntrinsicHeight();
-            }
-        } finally {
-            if (a != null)
-                a.recycle();
+        mSupportsLongpress = a.getBoolean(R.styleable.KeyButtonView_keyRepeat, true);
+        
+        mGlowBG = a.getDrawable(R.styleable.KeyButtonView_glowBackground);
+        if (mGlowBG != null) {
+            setDrawingAlpha(BUTTON_QUIESCENT_ALPHA);
+            mGlowWidth = mGlowBG.getIntrinsicWidth();
+            mGlowHeight = mGlowBG.getIntrinsicHeight();
         }
+
+        a.recycle();
 
         setClickable(true);
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        mSettingsObserver = GlobalSettingsObserver.getInstance(context);
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
 
-        if (mSettingsObserver != null) {
-            mSettingsObserver.attach(this);
-            mSettingsObserver.updateSettings();
+        if (!attached) {
+            IntentFilter filter = new IntentFilter("com.android.colors.ACTION_UPDATE");
+            getContext().registerReceiver(mBroadcastReceiver, filter);
+            attached = true;
         }
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-
-        if (mSettingsObserver != null) {
-            mSettingsObserver.detach(this);
-        }
+        mContext.unregisterReceiver(mBroadcastReceiver);
+        attached = false;
      } 
 
     public void setSupportsLongPress(boolean supports) {
@@ -405,91 +397,35 @@ public class KeyButtonView extends ImageView {
                 InputManager.INJECT_INPUT_EVENT_MODE_ASYNC);
     }
 
-    static class GlobalSettingsObserver extends ContentObserver {
-        private static GlobalSettingsObserver sInstance;
-        private ArrayList<KeyButtonView> mKeyButtonViews = new ArrayList<KeyButtonView>();
-        private Context mContext;
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 
-        GlobalSettingsObserver(Handler handler, Context context) {
-            super(handler);
-            mContext = context.getApplicationContext();
-        }
-
-        static GlobalSettingsObserver getInstance(Context context) {
-            if (sInstance == null) {
-                sInstance = new GlobalSettingsObserver(new Handler(), context);
-            }
-            return sInstance;
-        }
-
-        void attach(KeyButtonView kbv) {
-            if (mKeyButtonViews.isEmpty()) {
-                observe();
-            }
-            mKeyButtonViews.add(kbv);
-        }
-
-        void detach(KeyButtonView kbv) {
-            mKeyButtonViews.remove(kbv);
-            if (mKeyButtonViews.isEmpty()) {
-                unobserve();
-            }
-        }
-
-        void observe() {
-            ContentResolver resolver = mContext.getContentResolver();
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_BUTTON_ALPHA),
-                    false, this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_TINT),
-                    false, this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_GLOW_TINT),
-                    false, this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_GLOW_DURATION[1]),
-                    false, this);
+	    @Override
+	    public void onReceive(Context context, Intent intent) {
             updateSettings();
         }
+    };
 
-        void unobserve() {
-            mContext.getContentResolver().unregisterContentObserver(this);
-        }
+    private void updateSettings() {
+        ContentResolver resolver = mContext.getContentResolver();
+        mDurationSpeedOff = Settings.System.getInt(resolver,
+                Settings.System.NAVIGATION_BAR_GLOW_DURATION[0], 0);
+        mDurationSpeedOn = Settings.System.getInt(resolver,
+                Settings.System.NAVIGATION_BAR_GLOW_DURATION[1], 100);
+        BUTTON_QUIESCENT_ALPHA = Settings.System.getFloat(resolver,
+                Settings.System.NAVIGATION_BAR_BUTTON_ALPHA, 0.7f);
 
-        @Override
-        public void onChange(boolean selfChange) {
-            updateSettings();
-        }
-
-        void updateSettings() {
-            ContentResolver resolver = mContext.getContentResolver();
-            mDurationSpeedOff = Settings.System.getInt(resolver,
-                    Settings.System.NAVIGATION_BAR_GLOW_DURATION[0], 10);
-            mDurationSpeedOn = Settings.System.getInt(resolver,
-                    Settings.System.NAVIGATION_BAR_GLOW_DURATION[1], 100);
-            BUTTON_QUIESCENT_ALPHA = Settings.System.getFloat(resolver,
-                    Settings.System.NAVIGATION_BAR_BUTTON_ALPHA, 0.7f);
+        setDrawingAlpha(BUTTON_QUIESCENT_ALPHA);
+                
+        if (mGlowBG != null) {
             mGlowBGColor = Settings.System.getInt(resolver,
                     Settings.System.NAVIGATION_BAR_GLOW_TINT, -1);
 
-            for (KeyButtonView kbv : mKeyButtonViews) {
-
-                kbv.setDrawingAlpha(BUTTON_QUIESCENT_ALPHA);
-
-                if (kbv.mGlowBG != null) {
-                    kbv.mGlowBG.setColorFilter(null);
-                    if (mGlowBGColor != -1) {
-                        kbv.mGlowBG.setColorFilter(mGlowBGColor, PorterDuff.Mode.SRC_ATOP);
-                    }
-                }
-                kbv.setTint();
-                kbv.invalidate();
+            mGlowBG.setColorFilter(null);
+            if (mGlowBGColor != -1) {
+                mGlowBG.setColorFilter(mGlowBGColor, PorterDuff.Mode.SRC_ATOP);
             }
         }
+        setTint();
+        invalidate();
     }
 }

@@ -23,10 +23,12 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.LayoutTransition;
 import android.app.KeyguardManager;
 import android.app.StatusBarManager;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -146,8 +148,6 @@ public class NavigationBarView extends LinearLayout {
     public static final int KEY_ARROW_LEFT = 21; // pretty cute right
     public static final int KEY_ARROW_RIGHT = 22;
     public static final int KEY_BACK_ALT = 1000;
-
-
 
     private int mMenuVisbility;
     private int mMenuLocation;
@@ -803,8 +803,8 @@ public class NavigationBarView extends LinearLayout {
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         mTransparencyManager.setup();
-        observer().observe();
-        observer().onChange(true);
+        IntentFilter filter = new IntentFilter("com.android.navbarview.ACTION_UPDATE");
+        getContext().registerReceiver(mBroadcastReceiver, filter);
         updateSettings();
     }
 
@@ -813,7 +813,7 @@ public class NavigationBarView extends LinearLayout {
         super.onDetachedFromWindow();
         mTransparencyManager.destroy();
         mTransparencyManager = null;
-        unobserve();
+        mContext.unregisterReceiver(mBroadcastReceiver);
     }
 
     public void reorient() {
@@ -965,68 +965,6 @@ public class NavigationBarView extends LinearLayout {
     }
     */
 
-    private SettingsObserver _observer;
-        SettingsObserver observer() {
-            if (_observer == null)
-                _observer = new SettingsObserver(new Handler());
-                return _observer;
-            }
-        private void unobserve() {
-            if (_observer != null)
-                _observer._unobserve();
-            }
-
-    class SettingsObserver extends ContentObserver {
-        SettingsObserver(Handler handler) {
-            super(handler);
-        }
-
-        void observe() {
-            ContentResolver resolver = mContext.getContentResolver();
-
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.NAVIGATION_BAR_COLOR), false, this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.MENU_LOCATION), false,
-                    this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.MENU_VISIBILITY), false,
-                    this);
-            resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.NAVIGATION_BAR_BUTTONS_QTY), false,
-                    this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.NAVIGATION_BAR_MENU_ARROW_KEYS), false, this);
-
-            for (int j = 0; j < 7; j++) { // watch all 7 settings for changes.
-                resolver.registerContentObserver(
-                        Settings.System.getUriFor(Settings.System.NAVIGATION_CUSTOM_ACTIVITIES[j]),
-                        false,
-                        this);
-                resolver.registerContentObserver(
-                        Settings.System
-                                .getUriFor(Settings.System.NAVIGATION_LONGPRESS_ACTIVITIES[j]),
-                        false,
-                        this);
-                resolver.registerContentObserver(
-                        Settings.System.getUriFor(Settings.System.NAVIGATION_CUSTOM_APP_ICONS[j]),
-                        false,
-                        this);
-            }
-            updateSettings();
-        }
-
-        private void _unobserve() {
-            mContext.getContentResolver().unregisterContentObserver(_observer);
-            _observer = null;
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            updateSettings();
-        }
-    }
-
     /*
      * ]0 < alpha < 1[
      */
@@ -1048,7 +986,15 @@ public class NavigationBarView extends LinearLayout {
         bg.setAlpha(a);
     }
 
-    protected void updateSettings() {
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+
+	    @Override
+	    public void onReceive(Context context, Intent intent) {
+		    updateSettings();
+	    }
+    };
+
+    private void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
 
         mMenuLocation = Settings.System.getInt(resolver,

@@ -27,6 +27,7 @@ import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.res.Configuration;
 import android.content.Context;
@@ -34,13 +35,13 @@ import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ActivityInfo;
 import android.content.ServiceConnection;
-import android.database.ContentObserver;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
@@ -75,8 +76,6 @@ import android.view.ViewTreeObserver.OnPreDrawListener;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
-
-
 
 import com.android.internal.widget.multiwaveview.GlowPadView;
 import com.android.internal.widget.multiwaveview.GlowPadView.OnTriggerListener;
@@ -118,7 +117,6 @@ public class SearchPanelView extends FrameLayout implements
 
     private PackageManager mPackageManager;
     private Resources mResources;
-    private SettingsObserver mObserver;
 
     private ContentResolver mContentResolver;
     private String[] targetActivities = new String[5];
@@ -130,6 +128,7 @@ public class SearchPanelView extends FrameLayout implements
     private boolean mLongPress;
     private boolean mSearchPanelLock;
     private int mTarget;
+    private boolean attached = false;
 
     //need to make an intent list and an intent counter
     String[] intent;
@@ -152,7 +151,6 @@ public class SearchPanelView extends FrameLayout implements
                 Settings.System.CURRENT_UI_MODE, 0);
 
         mContentResolver = mContext.getContentResolver();
-        mObserver = new SettingsObserver(new Handler());
     }
 
     private class H extends Handler {
@@ -550,15 +548,20 @@ public class SearchPanelView extends FrameLayout implements
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
-
-        mObserver.observe();
+        if (!attached) {
+            IntentFilter filter = new IntentFilter("com.android.navring.ACTION_UPDATE");
+            getContext().registerReceiver(mBroadcastReceiver, filter);
+            attached = true;
+        }
+        
         updateSettings();
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        mObserver.unobserve();
+        mContext.unregisterReceiver(mBroadcastReceiver);
+        attached = false;
     }
 
     /**
@@ -617,49 +620,15 @@ public class SearchPanelView extends FrameLayout implements
         return mResources.getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
     }
 
-    class SettingsObserver extends ContentObserver {
-        private ContentResolver _persistentResolver; //null if unobserved, not if observed
 
-        SettingsObserver(Handler handler) {
-            super(handler);
-        }
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 
-        void observe() {
-            if (_persistentResolver == null)
-            {
-                _persistentResolver = mContext.getContentResolver();
-                _persistentResolver.registerContentObserver(Settings.System.getUriFor(
-                        Settings.System.SYSTEMUI_NAVRING_AMOUNT), false, this);
-
-                for (int i = 0; i < 5; i++) {
-	                _persistentResolver.registerContentObserver(
-                        Settings.System.getUriFor(Settings.System.SYSTEMUI_NAVRING[i]), false, this);
-	                _persistentResolver.registerContentObserver(
-                        Settings.System.getUriFor(Settings.System.SYSTEMUI_NAVRING_LONG[i]), false, this);
-                }
-            }
-            //else BEEN THERE. DONE THAT.
-        }
-
-        void unobserve() {
-            if (_persistentResolver != null) {
-                _persistentResolver.unregisterContentObserver(this);
-                _persistentResolver = null;
-            }
-            //else BEEN THERE. DONE THAT.
-        }
-
-        @Override
-        public boolean deliverSelfNotifications() {
-            return super.deliverSelfNotifications();
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
+	    @Override
+	    public void onReceive(Context context, Intent intent) {
             updateSettings();
             setDrawables();
         }
-    }
+    };
 
     public void updateSettings() {
 

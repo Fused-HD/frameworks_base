@@ -347,9 +347,20 @@ public class QuickSettings {
         mContext.registerReceiverAsUser(mProfileReceiver, UserHandle.ALL, profileFilter,
                 null, null);
 
-        new SettingsObserver(new Handler()).observe();
+        IntentFilter update = new IntentFilter("com.android.quicksettings.ACTION_UPDATE");
+        context.registerReceiver(mBroadcastReceiver, update);
+        
         new StateObserver(new Handler()).observe();
+        updateSettings();
     }
+
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+
+	    @Override
+	    public void onReceive(Context context, Intent intent) {
+            updateSettings();
+        }
+    };
 
     public void setBar(PanelBar bar) {
         mBar = bar;
@@ -2155,31 +2166,6 @@ public class QuickSettings {
          updateWifiDisplayStatus();
          updateResources();
          reloadFavContactInfo();
-    }
-
-    class SettingsObserver extends ContentObserver {
-        SettingsObserver(Handler handler) {
-            super(handler);
-        }
-
-        void observe() {
-            ContentResolver resolver = mContext.getContentResolver();
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.QUICK_TOGGLES),
-                    false, this);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.QUICK_TOGGLES_PER_ROW),
-                    false, this);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.QUICK_TOGGLE_FAV_CONTACT),
-                    false, this);
-            updateSettings();
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            updateSettings();
-        }
     }
 
     class StateObserver extends ContentObserver {
