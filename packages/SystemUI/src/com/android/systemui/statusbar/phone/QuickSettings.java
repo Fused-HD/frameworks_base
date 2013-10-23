@@ -1362,7 +1362,6 @@ public class QuickSettings {
                 quick.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        mBar.collapseAllPanels(true);
                         updateTimeoutValue();
                     }
                 });
@@ -1921,7 +1920,6 @@ public class QuickSettings {
 
     private void updateTimeoutValue() {
         screenTimeout = mTimeouts[(mTimeoutIndex.get(getScreenTimeout())+1)%mTimeouts.length];
-        screenTimeout = screenTimeout > 0 ? screenTimeout : Integer.MAX_VALUE;
         Settings.System.putInt(
                 mContext.getContentResolver(),
                 Settings.System.SCREEN_OFF_TIMEOUT, screenTimeout);
@@ -1935,7 +1933,7 @@ public class QuickSettings {
 
     private void getToasty(int screenTimeout) {
         String string = "";
-        if (screenTimeout == Integer.MAX_VALUE) {
+        if (screenTimeout == 0) {
             string = mTimeoutString;
         } else {
             string = "Timeout set to " + Integer.toString((screenTimeout) / 1000) + " seconds";
