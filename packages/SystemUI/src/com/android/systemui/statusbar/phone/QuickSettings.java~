@@ -1920,6 +1920,9 @@ public class QuickSettings {
     }
 
     private void updateTimeoutValue() {
+<<<<<<< HEAD
+        screenTimeout = mTimeouts[(mTimeoutIndex.get(getScreenTimeout())+1)%mTimeouts.length];
+=======
         try {
             final int currindex = mTimeoutIndex.get(getScreenTimeout());
             if (mTimeouts != null && currindex >= 0 && currindex < mTimeouts.length) {
@@ -1931,6 +1934,7 @@ public class QuickSettings {
         }
         if (screenTimeout > 300000)
             screenTimeout = Integer.MAX_VALUE;
+>>>>>>> 295c0a7... partial revert on timeout tile
         Settings.System.putInt(
                 mContext.getContentResolver(),
                 Settings.System.SCREEN_OFF_TIMEOUT, screenTimeout);
