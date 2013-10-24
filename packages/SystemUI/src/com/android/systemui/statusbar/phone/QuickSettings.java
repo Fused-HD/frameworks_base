@@ -190,7 +190,7 @@ public class QuickSettings {
 
     // screen timeout values
     private static int[] mTimeouts;
-    private static SparseArray<Integer> mTimeoutIndex;
+    private static HashMap<Integer,Integer> mTimeoutIndex;
 
     private static final String DEFAULT_TOGGLES = "default";
 
@@ -317,7 +317,7 @@ public class QuickSettings {
         if (mTimeouts == null)
             mTimeouts = r.getIntArray(R.array.qs_screen_timeout_values);
         if (mTimeoutIndex == null) {
-            mTimeoutIndex = new SparseArray<Integer>();
+            mTimeoutIndex = new HashMap<Integer,Integer>();
             int i=0;
             for (int t : mTimeouts)
                 mTimeoutIndex.put(t, i++);
