@@ -81,7 +81,6 @@ import android.provider.Settings.SettingNotFoundException;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.util.Pair;
-import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -106,6 +105,7 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.SparseArray;
 
 public class QuickSettings {
     private static final String TAG = "QuickSettings";
@@ -1929,8 +1929,6 @@ public class QuickSettings {
             Log.e(TAG, "WTFrenchToast?!", e);
             screenTimeout = mTimeouts[0];
         }
-        if (screenTimeout > 300000)
-            screenTimeout = Integer.MAX_VALUE;
         Settings.System.putInt(
                 mContext.getContentResolver(),
                 Settings.System.SCREEN_OFF_TIMEOUT, screenTimeout);
@@ -1944,8 +1942,8 @@ public class QuickSettings {
 
     private void getToasty(int screenTimeout) {
         String string = "";
-        if (screenTimeout > 300000) {
-            string = "Timeout off";
+        if (screenTimeout == 0) {
+            string = mTimeoutString;
         } else {
             string = "Timeout set to " + Integer.toString((screenTimeout) / 1000) + " seconds";
         }
